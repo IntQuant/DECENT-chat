@@ -34,6 +34,8 @@ class Application(tk.Frame):
 		msg = self.msg.get()
 		self.msg.set("")
 		to_send.append(msg)
+		recieved.append(f"SELF: {msg}")
+		self.update_text()
 	
 	def update_text(self):
 		global recieved
@@ -99,7 +101,7 @@ class Client:
 		
 		
 		try:
-			with socket.create_connection((self.ip, self.port), timeout=1) as self.socket:
+			with socket.create_connection((self.ip, self.port), timeout=0.1) as self.socket:
 				msg = msg_s.encode(ENCODING)
 				ln = (len(msg)).to_bytes(MSG_LEN_BYTES, 'big')
 				self.socket.sendall(ln+msg)
