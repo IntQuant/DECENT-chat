@@ -94,6 +94,7 @@ class Client:
 			if self.send_lite(msg):
 				pass
 			else:
+				self.queue.append(msg)
 				break
 			
 	
