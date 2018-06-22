@@ -22,7 +22,7 @@ class Client:
 	
 	def connect(self):
 		try:
-			with socket.create_connection((self.ip, self.port)) as self.socket:
+			with socket.create_connection((self.ip, self.port), timeout=1) as self.socket:
 				msg = b"|ping|"
 				ln = (len(msg)).to_bytes(MSG_LEN_BYTES, 'big')
 				self.socket.sendall(ln+msg)
@@ -32,7 +32,7 @@ class Client:
 	
 	def send(self, msg_s):
 		try:
-			with socket.create_connection((self.ip, self.port)) as self.socket:
+			with socket.create_connection((self.ip, self.port), timeout=1) as self.socket:
 				msg = msg_s.encode(ENCODING)
 				ln = (len(msg)).to_bytes(MSG_LEN_BYTES, 'big')
 				self.socket.sendall(ln+msg)
@@ -61,7 +61,7 @@ def server_thread(host, port):
 			s, addr = sock.accept()
 			
 			try:
-				s.settimeout(5)
+				s.settimeout(1)
 				ln = s.recv(MSG_LEN_BYTES)
 				msg = s.recv(int.from_bytes(ln, 'big'))
 				s.close()
@@ -92,15 +92,12 @@ time.sleep(1)
 
 print("Done")
 
-
-
 while True:
 	inp = input()
 	if inp != "":
 		recieved.append(f"SELF: {inp}")
 		for client in clients:
 			client.send(inp)
-	time.sleep(0.1)
 	clear_scr()
 	for msg in recieved:
 		print(msg)
