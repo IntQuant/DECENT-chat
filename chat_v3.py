@@ -3,6 +3,13 @@ import threading
 import os
 import time
 
+import tkinter as tk
+from tkinter.scrolledtext import ScrolledText
+
+def update_text():
+	global app
+	app.update_text()
+
 def clear_scr():
 	os.system("cls")
 
@@ -12,14 +19,56 @@ MSG_LEN_BYTES = 4
 ENCODING = "utf-8"
 
 recieved = []
-
+to_send = []
 clients = []
+
+class Application(tk.Frame):
+	def __init__(self, master=None):
+		super().__init__(master)
+		self.pack()
+		self.create_widgets()
+		self.ls = 0
+		
+
+	def send(self, event):
+		msg = self.msg.get()
+		self.msg.set("")
+		to_send.append(msg)
+	
+	def update_text(self):
+		global recieved
+		self.text_show.delete(1.0, 'end')
+		self.text_show.insert('end', "\n".join(recieved))
+	
+	def create_widgets(self):
+		self.text_show = ScrolledText(self)
+		
+		self.text_show.pack()
+		
+		
+		self.text_show["takefocus"] = 0
+		
+		self.msg = tk.StringVar()
+		
+		self.prompt = tk.Entry(self)
+		
+		self.prompt["textvariable"] = self.msg
+		
+		self.prompt.pack(fill="x")
+		
+		self.prompt.bind('<Key-Return>', self.send)
+		
+		self.quit = tk.Button(self, text="QUIT", fg="red",
+							  command=root.destroy)
+		self.quit.pack(side="bottom", fill="x")
 
 class Client:
 	def __init__(self, ip, port):
 		self.ip = ip
 		self.port = int(port)
+		self.queue = []
 	
+	"""	
 	def connect(self):
 		try:
 			with socket.create_connection((self.ip, self.port), timeout=1) as self.socket:
@@ -29,8 +78,26 @@ class Client:
 		except Exception as e:
 			print(f"Exception while connecting to {self.ip} {self.port}")
 			print(e)
+	"""
 	
 	def send(self, msg_s):
+		self.queue.append(msg_s)
+		
+		for i in range(5):
+			if len(self.queue) == 0:
+				break
+			
+			msg = self.queue.pop()
+			
+			if self.send_lite(msg):
+				pass
+			else:
+				break
+			
+	
+	def send_lite(self, msg_s):
+		
+		
 		try:
 			with socket.create_connection((self.ip, self.port), timeout=1) as self.socket:
 				msg = msg_s.encode(ENCODING)
@@ -39,20 +106,11 @@ class Client:
 		except Exception as e:
 			print(f"Exception while connecting to {self.ip} {self.port}")
 			print(e)
+			return False
+		return True
 		
 			
 		
-		
-
-"""
-def connected_thread(sock, addr):
-	global recieved
-	while True:
-		sock.settimeout(60)
-		ln = sock.recv(MSG_LEN_BYTES)
-		msg = sock.recv(int.from_bytes(ln, 'big'))
-		recieved.append(f"{addr}: {msg.decode(ENCODING)}")
-"""
 def server_thread(host, port):
 	with socket.socket() as sock:
 		sock.bind((host, port))
@@ -66,16 +124,28 @@ def server_thread(host, port):
 				msg = s.recv(int.from_bytes(ln, 'big'))
 				s.close()
 				recieved.append(f"{addr}: {msg.decode(ENCODING)}")
+				print(recieved[-1])
+				update_text()
 			except Exception as e:
 				print(e)
-				time.sleep(1)
-		#thr = threading.Thread(target=connected_thread, args=(s, addr))
-		#thr.daemon = True
-		#thr.start()
+
+def network_thread(to_send, clients):
+	while True:
+		time.sleep(0.2)
+		while len(to_send) > 0:
+			msg = to_send.pop()
+			for client in clients:
+				client.send(msg)
+
 
 thr = threading.Thread(target=server_thread, args=(HOST, PORT))
 thr.daemon = True
 thr.start()
+
+thr = threading.Thread(target=network_thread, args=(to_send, clients))
+thr.daemon = True
+thr.start()
+
 
 print("Server started")
 
@@ -83,15 +153,16 @@ with open("clients.txt", "r") as f:
 	for line in f:
 		clients.append(Client(*line.split()))
 
-input("Press ENTER to connect")
+#input("Press ENTER to connect")
 
-for client in clients:
-	client.connect()
+#for client in clients:
+#	client.connect()
 
-time.sleep(1)
+#time.sleep(1)
 
-print("Done")
+#print("Done")
 
+"""
 while True:
 	inp = input()
 	if inp != "":
@@ -101,3 +172,8 @@ while True:
 	clear_scr()
 	for msg in recieved:
 		print(msg)
+"""
+
+root = tk.Tk()
+app = Application(master=root)
+app.mainloop()
